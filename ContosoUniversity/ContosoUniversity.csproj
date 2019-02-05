@@ -158,6 +158,14 @@
     <Compile Include="Migrations\201901241610149_MaxLengthOnStudentNames.Designer.cs">
       <DependentUpon>201901241610149_MaxLengthOnStudentNames.cs</DependentUpon>
     </Compile>
+    <Compile Include="Migrations\201902051107538_ColumnFirstName.cs" />
+    <Compile Include="Migrations\201902051107538_ColumnFirstName.Designer.cs">
+      <DependentUpon>201902051107538_ColumnFirstName.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\201902051118272_StudentValidation.cs" />
+    <Compile Include="Migrations\201902051118272_StudentValidation.Designer.cs">
+      <DependentUpon>201902051118272_StudentValidation.cs</DependentUpon>
+    </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\Course.cs" />
     <Compile Include="Models\Enrolment.cs" />
@@ -233,6 +241,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Migrations\201901241610149_MaxLengthOnStudentNames.resx">
       <DependentUpon>201901241610149_MaxLengthOnStudentNames.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201902051107538_ColumnFirstName.resx">
+      <DependentUpon>201902051107538_ColumnFirstName.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\201902051118272_StudentValidation.resx">
+      <DependentUpon>201902051118272_StudentValidation.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
