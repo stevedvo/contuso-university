@@ -1,13 +1,14 @@
-﻿using System;
+﻿using ContosoUniversity.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Web;
 
-namespace ContosoUniversity.Models
+namespace ContosoUniversity.ViewModels
 {
-	public class Course
+	public class EditCourseViewModel
 	{
 		[DatabaseGenerated(DatabaseGeneratedOption.None)]
 		[Display(Name = "Number")]
@@ -22,7 +23,5 @@ namespace ContosoUniversity.Models
 		public int DepartmentID { get; set; }
 
 		public virtual Department Department { get; set; }
-		public virtual ICollection<Enrolment> Enrolments { get; set; }
-		public virtual ICollection<Instructor> Instructors { get; set; }
 	}
 }
