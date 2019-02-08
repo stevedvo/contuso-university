@@ -1,13 +1,14 @@
-﻿using System;
+﻿using ContosoUniversity.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Web;
 
-namespace ContosoUniversity.Models
+namespace ContosoUniversity.ViewModels
 {
-	public class Instructor
+	public class EditInstructorViewModel
 	{
 		public int ID { get; set; }
 
