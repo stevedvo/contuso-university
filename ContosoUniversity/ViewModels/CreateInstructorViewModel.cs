@@ -1,16 +1,15 @@
-﻿using System;
+﻿using ContosoUniversity.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Web;
 
-namespace ContosoUniversity.Models
+namespace ContosoUniversity.ViewModels
 {
-	public class Instructor
+	public class CreateInstructorViewModel
 	{
-		public int ID { get; set; }
-
 		[Display(Name = "Last Name"), StringLength(50, MinimumLength = 1)]
 		public string LastName { get; set; }
 

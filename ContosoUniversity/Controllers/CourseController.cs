@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Entity;
+using System.Data.Entity.Infrastructure;
 using System.Linq;
 using System.Net;
 using System.Web;
@@ -44,7 +45,7 @@ namespace ContosoUniversity.Controllers
 		// GET: Course/Create
 		public ActionResult Create()
 		{
-			ViewBag.DepartmentID = new SelectList(db.Departments, "DepartmentID", "Name");
+			PopulateDepartmentsDropDownList();
 			return View();
 		}
 
@@ -52,22 +53,30 @@ namespace ContosoUniversity.Controllers
 		[ValidateAntiForgeryToken]
 		public ActionResult Create(CreateCourseViewModel model)
 		{
-			if (ModelState.IsValid)
+			try
 			{
-				Course course = new Course
+				if (ModelState.IsValid)
 				{
-					CourseID = model.CourseID,
-					Title = model.Title,
-					Credits = model.Credits,
-					DepartmentID = model.DepartmentID
-				};
+					Course course = new Course
+					{
+						CourseID = model.CourseID,
+						Title = model.Title,
+						Credits = model.Credits,
+						DepartmentID = model.DepartmentID
+					};
 
-				db.Courses.Add(course);
-				db.SaveChanges();
-				return RedirectToAction("Index");
+					db.Courses.Add(course);
+					db.SaveChanges();
+					return RedirectToAction("Index");
+				}
+			}
+			catch (RetryLimitExceededException /* dex */)
+			{
+				//Log the error (uncomment dex variable name and add a line here to write a log.)
+				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
 
-			ViewBag.DepartmentID = new SelectList(db.Departments, "DepartmentID", "Name", model.DepartmentID);
+			PopulateDepartmentsDropDownList(model.DepartmentID);
 			return View(model);
 		}
 
@@ -94,7 +103,7 @@ namespace ContosoUniversity.Controllers
 				DepartmentID = course.DepartmentID
 			};
 
-			ViewBag.DepartmentID = new SelectList(db.Departments, "DepartmentID", "Name", model.DepartmentID);
+			PopulateDepartmentsDropDownList(model.DepartmentID);
 			return View(model);
 		}
 
@@ -102,25 +111,33 @@ namespace ContosoUniversity.Controllers
 		[ValidateAntiForgeryToken]
 		public ActionResult Edit(EditCourseViewModel model)
 		{
-			if (ModelState.IsValid)
+			try
 			{
-				Course course = db.Courses.Find(model.CourseID);
-
-				if (course == null)
+				if (ModelState.IsValid)
 				{
-					return HttpNotFound();
+					Course course = db.Courses.Find(model.CourseID);
+
+					if (course == null)
+					{
+						return HttpNotFound();
+					}
+
+					course.Title = model.Title;
+					course.Credits = model.Credits;
+					course.DepartmentID = model.DepartmentID;
+
+					db.Entry(course).State = EntityState.Modified;
+					db.SaveChanges();
+					return RedirectToAction("Index");
 				}
-
-				course.Title = model.Title;
-				course.Credits = model.Credits;
-				course.DepartmentID = model.DepartmentID;
-
-				db.Entry(course).State = EntityState.Modified;
-				db.SaveChanges();
-				return RedirectToAction("Index");
+			}
+			catch (RetryLimitExceededException /* dex */)
+			{
+				//Log the error (uncomment dex variable name and add a line here to write a log.
+				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
 
-			ViewBag.DepartmentID = new SelectList(db.Departments, "DepartmentID", "Name", model.DepartmentID);
+			PopulateDepartmentsDropDownList(model.DepartmentID);
 			return View(model);
 		}
 
@@ -160,6 +177,14 @@ namespace ContosoUniversity.Controllers
 			}
 
 			base.Dispose(disposing);
+		}
+
+		private void PopulateDepartmentsDropDownList(object selectedDepartment = null)
+		{
+			var departmentsQuery = from d in db.Departments
+								   orderby d.Name
+								   select d;
+			ViewBag.DepartmentID = new SelectList(departmentsQuery, "DepartmentID", "Name", selectedDepartment);
 		}
 	}
 }
