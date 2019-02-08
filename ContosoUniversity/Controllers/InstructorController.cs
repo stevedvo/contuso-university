@@ -116,6 +116,7 @@ namespace ContosoUniversity.Controllers
 
 			Instructor instructor = db.Instructors
 				.Include(i => i.OfficeAssignment)
+				.Include(i => i.Courses)
 				.Single(i => i.ID == id);
 
 			if (instructor == null)
@@ -129,15 +130,18 @@ namespace ContosoUniversity.Controllers
 				LastName = instructor.LastName,
 				FirstMidName = instructor.FirstMidName,
 				HireDate = instructor.HireDate,
+				Courses = instructor.Courses,
 				OfficeAssignment = instructor.OfficeAssignment
 			};
+
+			PopulateAssignedCourseData(model);
 
 			return View(model);
 		}
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public ActionResult Edit(EditInstructorViewModel model)
+		public ActionResult Edit(EditInstructorViewModel model, string[] selectedCourses)
 		{
 			try
 			{
@@ -145,12 +149,15 @@ namespace ContosoUniversity.Controllers
 				{
 					Instructor instructor = db.Instructors
 						.Include(i => i.OfficeAssignment)
+						.Include(i => i.Courses)
 						.Single(i => i.ID == model.ID);
 
 					instructor.LastName = model.LastName;
 					instructor.FirstMidName = model.FirstMidName;
 					instructor.HireDate = model.HireDate;
 					instructor.OfficeAssignment = string.IsNullOrWhiteSpace(model.OfficeAssignment.Location) ? null : model.OfficeAssignment;
+
+					UpdateInstructorCourses(selectedCourses, instructor);
 
 					db.Entry(instructor).State = EntityState.Modified;
 					db.SaveChanges();
@@ -162,6 +169,8 @@ namespace ContosoUniversity.Controllers
 				//Log the error (uncomment dex variable name and add a line here to write a log.
 				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
+
+			PopulateAssignedCourseData(model);
 
 			return View(model);
 		}
@@ -199,6 +208,55 @@ namespace ContosoUniversity.Controllers
 				db.Dispose();
 			}
 			base.Dispose(disposing);
+		}
+
+		private void PopulateAssignedCourseData(EditInstructorViewModel model)
+		{
+			var allCourses = db.Courses;
+			var instructorCourses = new HashSet<int>(model.Courses.Select(c => c.CourseID));
+			var viewModel = new List<AssignedCourseData>();
+
+			foreach (var course in allCourses)
+			{
+				viewModel.Add(new AssignedCourseData
+				{
+					CourseID = course.CourseID,
+					Title = course.Title,
+					Assigned = instructorCourses.Contains(course.CourseID)
+				});
+			}
+
+			ViewBag.Courses = viewModel;
+		}
+
+		private void UpdateInstructorCourses(string[] selectedCourses, Instructor instructorToUpdate)
+		{
+			if (selectedCourses == null)
+			{
+				instructorToUpdate.Courses = new List<Course>();
+				return;
+			}
+
+			var selectedCoursesHS = new HashSet<string>(selectedCourses);
+			var instructorCourses = new HashSet<int>(instructorToUpdate.Courses.Select(c => c.CourseID));
+
+			foreach (var course in db.Courses)
+			{
+				if (selectedCoursesHS.Contains(course.CourseID.ToString()))
+				{
+					if (!instructorCourses.Contains(course.CourseID))
+					{
+						instructorToUpdate.Courses.Add(course);
+					}
+				}
+				else
+				{
+					if (instructorCourses.Contains(course.CourseID))
+					{
+						instructorToUpdate.Courses.Remove(course);
+					}
+				}
+			}
 		}
 	}
 }
