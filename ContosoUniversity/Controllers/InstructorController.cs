@@ -84,26 +84,42 @@ namespace ContosoUniversity.Controllers
 		// GET: Instructor/Create
 		public ActionResult Create()
 		{
-			ViewBag.ID = new SelectList(db.OfficeAssignments, "InstructorID", "Location");
+			PopulateViewBagCourses();
 			return View();
 		}
 
-		// POST: Instructor/Create
-		// To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-		// more details see https://go.microsoft.com/fwlink/?LinkId=317598.
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public ActionResult Create([Bind(Include = "ID,LastName,FirstMidName,HireDate")] Instructor instructor)
+		public ActionResult Create(CreateInstructorViewModel model, string[] selectedCourses)
 		{
+			if (selectedCourses != null)
+			{
+				model.Courses = new List<Course>();
+
+				foreach (var course in selectedCourses)
+				{
+					var courseToAdd = db.Courses.Find(int.Parse(course));
+					model.Courses.Add(courseToAdd);
+				}
+			}
+
 			if (ModelState.IsValid)
 			{
+				Instructor instructor = new Instructor();
+
+				instructor.LastName = model.LastName;
+				instructor.FirstMidName = model.FirstMidName;
+				instructor.HireDate = model.HireDate;
+				instructor.OfficeAssignment = model.OfficeAssignment;
+				instructor.Courses = model.Courses;
+
 				db.Instructors.Add(instructor);
 				db.SaveChanges();
 				return RedirectToAction("Index");
 			}
 
-			ViewBag.ID = new SelectList(db.OfficeAssignments, "InstructorID", "Location", instructor.ID);
-			return View(instructor);
+			PopulateViewBagCourses(model);
+			return View(model);
 		}
 
 		// GET: Instructor/Edit/5
@@ -223,10 +239,10 @@ namespace ContosoUniversity.Controllers
 			base.Dispose(disposing);
 		}
 
-		private void PopulateAssignedCourseData(EditInstructorViewModel model)
+		private void PopulateViewBagCourses(CreateInstructorViewModel model = null)
 		{
 			var allCourses = db.Courses;
-			var instructorCourses = new HashSet<int>(model.Courses.Select(c => c.CourseID));
+			var instructorCourses = model == null ? null : new HashSet<int>(model.Courses.Select(c => c.CourseID));
 			var viewModel = new List<AssignedCourseData>();
 
 			foreach (var course in allCourses)
@@ -235,7 +251,26 @@ namespace ContosoUniversity.Controllers
 				{
 					CourseID = course.CourseID,
 					Title = course.Title,
-					Assigned = instructorCourses.Contains(course.CourseID)
+					Assigned = instructorCourses == null ? false : instructorCourses.Contains(course.CourseID)
+				});
+			}
+
+			ViewBag.Courses = viewModel;
+		}
+
+		private void PopulateAssignedCourseData(EditInstructorViewModel model = null)
+		{
+			var allCourses = db.Courses;
+			var instructorCourses = model == null ? null : new HashSet<int>(model.Courses.Select(c => c.CourseID));
+			var viewModel = new List<AssignedCourseData>();
+
+			foreach (var course in allCourses)
+			{
+				viewModel.Add(new AssignedCourseData
+				{
+					CourseID = course.CourseID,
+					Title = course.Title,
+					Assigned = instructorCourses == null ? false : instructorCourses.Contains(course.CourseID)
 				});
 			}
 
