@@ -9,6 +9,8 @@ using System.Web;
 using System.Web.Mvc;
 using ContosoUniversity.DAL;
 using ContosoUniversity.Models;
+using ContosoUniversity.ViewModels;
+using System.Data.Entity.Infrastructure;
 
 namespace ContosoUniversity.Controllers
 {
@@ -48,22 +50,35 @@ namespace ContosoUniversity.Controllers
 			return View();
 		}
 
-		// POST: Department/Create
-		// To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-		// more details see https://go.microsoft.com/fwlink/?LinkId=317598.
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<ActionResult> Create([Bind(Include = "DepartmentID,Name,Budget,StartDate,InstructorID")] Department department)
+		public async Task<ActionResult> Create(CreateDepartmentViewModel model)
 		{
-			if (ModelState.IsValid)
+			try
 			{
-				db.Departments.Add(department);
-				await db.SaveChangesAsync();
-				return RedirectToAction("Index");
+				if (ModelState.IsValid)
+				{
+					Department department = new Department
+					{
+						Name = model.Name,
+						Budget = model.Budget,
+						StartDate = model.StartDate,
+						InstructorID = model.InstructorID
+					};
+
+					db.Departments.Add(department);
+					await db.SaveChangesAsync();
+					return RedirectToAction("Index");
+				}
+			}
+			catch (RetryLimitExceededException /* dex */)
+			{
+				//Log the error (uncomment dex variable name and add a line here to write a log.
+				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
 
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", department.InstructorID);
-			return View(department);
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", model.InstructorID);
+			return View(model);
 		}
 
 		// GET: Department/Edit/5
@@ -81,26 +96,52 @@ namespace ContosoUniversity.Controllers
 				return HttpNotFound();
 			}
 
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", department.InstructorID);
-			return View(department);
+			EditDepartmentViewModel model = new EditDepartmentViewModel
+			{
+				DepartmentID = department.DepartmentID,
+				Name = department.Name,
+				Budget = department.Budget,
+				StartDate = department.StartDate,
+				InstructorID = department.InstructorID
+			};
+
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", model.InstructorID);
+			return View(model);
 		}
 
-		// POST: Department/Edit/5
-		// To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-		// more details see https://go.microsoft.com/fwlink/?LinkId=317598.
 		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<ActionResult> Edit([Bind(Include = "DepartmentID,Name,Budget,StartDate,InstructorID")] Department department)
+		public async Task<ActionResult> Edit(EditDepartmentViewModel model)
 		{
-			if (ModelState.IsValid)
+			try
 			{
-				db.Entry(department).State = EntityState.Modified;
-				await db.SaveChangesAsync();
-				return RedirectToAction("Index");
+				if (ModelState.IsValid)
+				{
+					Department department = await db.Departments.FindAsync(model.DepartmentID);
+
+					if (department == null)
+					{
+						return HttpNotFound();
+					}
+
+					department.Name = model.Name;
+					department.Budget = model.Budget;
+					department.StartDate = model.StartDate;
+					department.InstructorID = model.InstructorID;
+
+					db.Entry(department).State = EntityState.Modified;
+					await db.SaveChangesAsync();
+					return RedirectToAction("Index");
+				}
+			}
+			catch (RetryLimitExceededException /* dex */)
+			{
+				//Log the error (uncomment dex variable name and add a line here to write a log.
+				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
 
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", department.InstructorID);
-			return View(department);
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", model.InstructorID);
+			return View(model);
 		}
 
 		// GET: Department/Delete/5
