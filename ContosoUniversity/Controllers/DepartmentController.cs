@@ -46,7 +46,7 @@ namespace ContosoUniversity.Controllers
 		// GET: Department/Create
 		public ActionResult Create()
 		{
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName");
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "FullName");
 			return View();
 		}
 
@@ -77,7 +77,7 @@ namespace ContosoUniversity.Controllers
 				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
 
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", model.InstructorID);
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "FullName", model.InstructorID);
 			return View(model);
 		}
 
@@ -102,10 +102,11 @@ namespace ContosoUniversity.Controllers
 				Name = department.Name,
 				Budget = department.Budget,
 				StartDate = department.StartDate,
-				InstructorID = department.InstructorID
+				InstructorID = department.InstructorID,
+				RowVersion = department.RowVersion
 			};
 
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", model.InstructorID);
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "FullName", model.InstructorID);
 			return View(model);
 		}
 
@@ -121,17 +122,48 @@ namespace ContosoUniversity.Controllers
 
 					if (department == null)
 					{
-						return HttpNotFound();
+						ModelState.AddModelError("", "Unable to save changes. The department was deleted by another User.");
+						ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "FullName", model.InstructorID);
+						return View(model);
 					}
 
-					department.Name = model.Name;
-					department.Budget = model.Budget;
-					department.StartDate = model.StartDate;
-					department.InstructorID = model.InstructorID;
+					if (department.RowVersion.SequenceEqual(model.RowVersion))
+					{
+						department.Name = model.Name;
+						department.Budget = model.Budget;
+						department.StartDate = model.StartDate;
+						department.InstructorID = model.InstructorID;
 
-					db.Entry(department).State = EntityState.Modified;
-					await db.SaveChangesAsync();
-					return RedirectToAction("Index");
+						db.Entry(department).State = EntityState.Modified;
+						await db.SaveChangesAsync();
+						return RedirectToAction("Index");
+					}
+					else
+					{
+						if (department.Name != model.Name)
+						{
+							ModelState.AddModelError("Name", "Current Value: " + department.Name);
+						}
+
+						if (department.Budget != model.Budget)
+						{
+							ModelState.AddModelError("Budget", "Current Value: " + String.Format("{0:c}", department.Budget));
+						}
+
+						if (department.StartDate != model.StartDate)
+						{
+							ModelState.AddModelError("StartDate", "Current Value: " + String.Format("{0:yyyy-MM-dd}", department.StartDate));
+						}
+
+						if (department.InstructorID != model.InstructorID)
+						{
+							ModelState.AddModelError("InstructorID", "Current Value: " + db.Instructors.Find(department.InstructorID).FullName);
+						}
+
+						ModelState.AddModelError("", "The record you attempted to edit was modified by another User after you got the original value. The edit operation was cancelled and the current values in the database have been displayed. If you still want to edit this record, click the Save button again. Otherwise click the 'Back To List' hyperlink.");
+
+						model.RowVersion = department.RowVersion;
+					}
 				}
 			}
 			catch (RetryLimitExceededException /* dex */)
@@ -140,12 +172,12 @@ namespace ContosoUniversity.Controllers
 				ModelState.AddModelError("", "Unable to save changes. Try again, and if the problem persists, see your system administrator.");
 			}
 
-			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "LastName", model.InstructorID);
+			ViewBag.InstructorID = new SelectList(db.Instructors, "ID", "FullName", model.InstructorID);
 			return View(model);
 		}
 
 		// GET: Department/Delete/5
-		public async Task<ActionResult> Delete(int? id)
+		public async Task<ActionResult> Delete(int? id, bool? concurrencyError)
 		{
 			if (id == null)
 			{
@@ -156,21 +188,43 @@ namespace ContosoUniversity.Controllers
 
 			if (department == null)
 			{
+				if (concurrencyError.GetValueOrDefault())
+				{
+					return RedirectToAction("Index");
+				}
+
 				return HttpNotFound();
+			}
+
+			if (concurrencyError.GetValueOrDefault())
+			{
+				ViewBag.ConcurrencyErrorMessage = "The record you attempted to delete was modified by another user after you got the original values. The delete operation was cancelled and the current values in the database have been displayed. If you still want to delete this record, click the Delete button again. Otherwise click the 'Back to List' hyperlink.";
 			}
 
 			return View(department);
 		}
 
 		// POST: Department/Delete/5
-		[HttpPost, ActionName("Delete")]
+		[HttpPost]
 		[ValidateAntiForgeryToken]
-		public async Task<ActionResult> DeleteConfirmed(int id)
+		public async Task<ActionResult> Delete(Department department)
 		{
-			Department department = await db.Departments.FindAsync(id);
-			db.Departments.Remove(department);
-			await db.SaveChangesAsync();
-			return RedirectToAction("Index");
+			try
+			{
+				db.Entry(department).State = EntityState.Deleted;
+				await db.SaveChangesAsync();
+				return RedirectToAction("Index");
+			}
+			catch (DbUpdateConcurrencyException)
+			{
+				return RedirectToAction("Delete", new {concurrencyError = true, id = department.DepartmentID});
+			}
+			catch (DataException /* dex */)
+			{
+				//Log the error (uncomment dex variable name after DataException and add a line here to write a log.
+				ModelState.AddModelError(string.Empty, "Unable to delete. Try again, and if the problem persists contact your system administrator.");
+				return View(department);
+			}
 		}
 
 		protected override void Dispose(bool disposing)
